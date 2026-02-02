@@ -993,18 +993,138 @@
             document.getElementById('temp-value').textContent = e.target.value;
         });
 
-        async function chatWithGrok() {
-            const message = document.getElementById('grok-message').value;
-            const model = document.getElementById('grok-model').value;
-            const temperature = parseFloat(document.getElementById('grok-temperature').value);
+        // Tab switching for Grok
+        function switchGrokTab(event, tab) {
+            // Hide all tabs
+            document.querySelectorAll('.grok-tab').forEach(t => t.style.display = 'none');
+            
+            // Show selected tab
+            document.getElementById(`grok-${tab}-tab`).style.display = 'block';
+            
+            // Update active button
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
 
-            if (!message) {
-                alert('Please enter a message');
+        async function getSocialInsights() {
+            const topic = document.getElementById('social-topic').value;
+            const type = document.getElementById('social-type').value;
+
+            if (!topic) {
+                alert('Please enter a topic');
                 return;
             }
 
+            const prompts = {
+                trending: `What's currently trending on X/Twitter about ${topic}? Give me the latest buzz, popular discussions, and key talking points.`,
+                sentiment: `Analyze the sentiment on social media about ${topic}. What are people saying? Is it positive, negative, or mixed? Give specific examples.`,
+                comparison: `Compare the social media presence and sentiment between ${topic}. Which one has more buzz? What are people saying about each?`,
+                influencers: `Who are the key influencers and thought leaders talking about ${topic} on social media? What's their reach and impact?`
+            };
+
+            await sendGrokMessage(prompts[type]);
+        }
+
+        async function analyzeContent() {
+            const content = document.getElementById('analyze-content').value;
+            const focus = document.getElementById('analyze-focus').value;
+
+            if (!content) {
+                alert('Please enter content to analyze');
+                return;
+            }
+
+            const prompts = {
+                general: `Analyze this content and provide key insights:\n\n${content}`,
+                business: `Analyze this from a business strategy perspective. What are the opportunities, challenges, and recommendations?\n\n${content}`,
+                technical: `Provide a deep technical analysis of this:\n\n${content}`,
+                competitive: `Analyze this from a competitive positioning perspective. What are the strengths, weaknesses, and market position?\n\n${content}`,
+                audience: `Analyze the target audience implications of this content. Who is this for? What resonates?\n\n${content}`,
+                risks: `Conduct a risk assessment of this content/situation. What are the potential risks and mitigation strategies?\n\n${content}`
+            };
+
+            await sendGrokMessage(prompts[focus]);
+        }
+
+        async function createContent() {
+            const type = document.getElementById('creative-type').value;
+            const brief = document.getElementById('creative-brief').value;
+            const tone = document.getElementById('creative-tone').value;
+
+            if (!brief) {
+                alert('Please enter a brief');
+                return;
+            }
+
+            const prompts = {
+                social: `Write a ${tone} social media post about: ${brief}. Make it engaging and shareable.`,
+                email: `Write a ${tone} email about: ${brief}. Include subject line.`,
+                ad: `Write ${tone} advertisement copy for: ${brief}. Make it compelling and conversion-focused.`,
+                blog: `Write a ${tone} blog post about: ${brief}. Include an attention-grabbing intro.`,
+                script: `Write a ${tone} event script for: ${brief}. Include key talking points and flow.`,
+                press: `Write a ${tone} press release about: ${brief}. Follow standard PR format.`
+            };
+
+            await sendGrokMessage(prompts[type]);
+        }
+
+        function loadTemplate(platform) {
+            const templates = {
+                instagram: {
+                    type: 'social',
+                    tone: 'exciting',
+                    brief: 'ICAUR luxury SUV test drive event at Dubai Marina. 3 flagship vehicles, VIP experience, exclusive networking.'
+                },
+                linkedin: {
+                    type: 'social',
+                    tone: 'professional',
+                    brief: 'Professional networking event for automotive industry executives. Showcase latest luxury vehicles and discuss market trends.'
+                },
+                twitter: {
+                    type: 'social',
+                    tone: 'exciting',
+                    brief: 'Launch announcement for exclusive automotive experience. Create thread format (5-7 tweets).'
+                },
+                email: {
+                    type: 'email',
+                    tone: 'luxury',
+                    brief: 'VIP invitation to exclusive test drive event. Limited spots, high-end experience, Dubai Marina location.'
+                }
+            };
+
+            const template = templates[platform];
+            document.getElementById('creative-type').value = template.type;
+            document.getElementById('creative-tone').value = template.tone;
+            document.getElementById('creative-brief').value = template.brief;
+            switchGrokTab({ target: document.querySelectorAll('.tab-btn')[3] }, 'creative');
+        }
+
+        async function processCode() {
+            const language = document.getElementById('code-language').value;
+            const task = document.getElementById('code-task').value;
+            const input = document.getElementById('code-input').value;
+
+            if (!input) {
+                alert('Please enter a description or code');
+                return;
+            }
+
+            const prompts = {
+                generate: `Write ${language} code for: ${input}. Include comments and best practices.`,
+                debug: `Debug and fix this ${language} code:\n\n${input}\n\nExplain what was wrong and how you fixed it.`,
+                explain: `Explain this ${language} code in detail:\n\n${input}`,
+                optimize: `Optimize this ${language} code for better performance:\n\n${input}\n\nExplain the improvements.`,
+                convert: `Convert this code to ${language}:\n\n${input}`
+            };
+
+            await sendGrokMessage(prompts[task]);
+        }
+
+        async function sendGrokMessage(message) {
             const loading = document.getElementById('grok-loading');
             const resultDiv = document.getElementById('grok-result');
+            const model = document.getElementById('grok-model')?.value || 'grok-4-latest';
+            const temperature = parseFloat(document.getElementById('grok-temperature')?.value || 0.7);
             
             loading.style.display = 'block';
             resultDiv.innerHTML = '';
@@ -1017,7 +1137,7 @@
                         messages: [{ role: 'user', content: message }],
                         model: model,
                         temperature: temperature,
-                        max_tokens: 2048
+                        max_tokens: 4096
                     })
                 });
                 
@@ -1028,18 +1148,29 @@
                     resultDiv.innerHTML = `
                         <div class="result-box">
                             <p class="success">✅ Grok's Response:</p>
-                            <div style="background:white; padding:15px; border-radius:8px; margin-top:10px;">
-                                ${data.data.content.replace(/\n/g, '<br>')}
+                            <div style="background:rgba(39,39,42,0.6); padding:20px; border-radius:12px; margin-top:15px; line-height:1.8; color:#e4e4e7;">
+                                ${data.data.content.replace(/\n/g, '<br>').replace(/```(.*?)```/gs, '<pre>$1</pre>')}
                             </div>
                         </div>
                     `;
                 } else {
-                    resultDiv.innerHTML = `<p class="error">❌ ${data.message || 'Chat failed'}</p>`;
+                    resultDiv.innerHTML = `<p class="error">❌ ${data.message || 'Request failed'}</p>`;
                 }
             } catch (error) {
                 loading.style.display = 'none';
                 resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
             }
+        }
+
+        async function chatWithGrok() {
+            const message = document.getElementById('grok-message').value;
+
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+
+            await sendGrokMessage(message);
         }
 
         async function generateImage() {
