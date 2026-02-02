@@ -421,6 +421,39 @@
         .card:hover h2::after {
             opacity: 1;
         }
+        
+        .tab-btn {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            color: #d4d4d8;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(147, 51, 234, 0.2);
+            border-color: rgba(147, 51, 234, 0.5);
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            border-color: #9333ea;
+            color: white;
+            box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+        }
+        
+        .grok-tab {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -525,29 +558,179 @@
             <div id="gamma-result"></div>
         </div>
 
-        <!-- Grok Chat Section -->
+        <!-- Grok Enhanced Section -->
         <div class="card" id="grok-section" style="display:none;">
-            <h2>🤖 Chat with Grok</h2>
-            <div class="form-group">
-                <label>Your Message</label>
-                <textarea id="grok-message" placeholder="Ask Grok anything..."></textarea>
+            <h2>🤖 Grok AI by xAI - Full Capabilities</h2>
+            
+            <!-- Tab Navigation -->
+            <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid rgba(147,51,234,0.2); padding-bottom:15px; flex-wrap:wrap;">
+                <button class="tab-btn active" onclick="switchGrokTab(event, 'chat')">💬 Chat</button>
+                <button class="tab-btn" onclick="switchGrokTab(event, 'social')">🌐 Social Insights</button>
+                <button class="tab-btn" onclick="switchGrokTab(event, 'analyze')">📊 Analyze</button>
+                <button class="tab-btn" onclick="switchGrokTab(event, 'creative')">✨ Creative</button>
+                <button class="tab-btn" onclick="switchGrokTab(event, 'code')">💻 Code</button>
             </div>
-            <div class="form-group">
-                <label>Model</label>
-                <select id="grok-model">
-                    <option value="grok-4-latest">Grok 4 Latest</option>
-                    <option value="grok-3">Grok 3</option>
-                </select>
+
+            <!-- Chat Tab -->
+            <div id="grok-chat-tab" class="grok-tab">
+                <p style="color:#a1a1aa; margin-bottom:20px;">Have a conversation with Grok.</p>
+                
+                <div class="form-group">
+                    <label>Your Message</label>
+                    <textarea id="grok-message" placeholder="Ask Grok anything..."></textarea>
+                </div>
+                
+                <div style="display:grid; grid-template-columns:2fr 1fr; gap:15px;">
+                    <div class="form-group">
+                        <label>Model</label>
+                        <select id="grok-model">
+                            <option value="grok-4-latest" selected>Grok 4 Latest</option>
+                            <option value="grok-3">Grok 3</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Temperature: <span id="temp-value">0.7</span></label>
+                        <input type="range" id="grok-temperature" min="0" max="2" step="0.1" value="0.7">
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="chatWithGrok()">Send to Grok</button>
             </div>
-            <div class="form-group">
-                <label>Temperature: <span id="temp-value">0</span></label>
-                <input type="range" id="grok-temperature" min="0" max="1" step="0.1" value="0">
+
+            <!-- Social Insights Tab -->
+            <div id="grok-social-tab" class="grok-tab" style="display:none;">
+                <p style="color:#a1a1aa; margin-bottom:20px;">Get real-time insights from X/Twitter and social media trends.</p>
+                
+                <div class="form-group">
+                    <label>Topic to Analyze</label>
+                    <input type="text" id="social-topic" placeholder="e.g., luxury cars, Dubai events, BMW vs Mercedes">
+                </div>
+                
+                <div class="form-group">
+                    <label>Analysis Type</label>
+                    <select id="social-type">
+                        <option value="trending">What's Trending</option>
+                        <option value="sentiment">Sentiment Analysis</option>
+                        <option value="comparison">Compare Two Topics</option>
+                        <option value="influencers">Key Influencers</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="getSocialInsights()">Get Social Insights</button>
             </div>
-            <button class="btn" onclick="chatWithGrok()">Send Message</button>
+
+            <!-- Analyze Tab -->
+            <div id="grok-analyze-tab" class="grok-tab" style="display:none;">
+                <p style="color:#a1a1aa; margin-bottom:20px;">Deep analysis of text, data, or concepts.</p>
+                
+                <div class="form-group">
+                    <label>Content to Analyze</label>
+                    <textarea id="analyze-content" placeholder="Paste text, data, or describe what you want analyzed..." style="min-height:150px;"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Analysis Focus</label>
+                    <select id="analyze-focus">
+                        <option value="general">General Analysis</option>
+                        <option value="business">Business Strategy</option>
+                        <option value="technical">Technical Deep Dive</option>
+                        <option value="competitive">Competitive Analysis</option>
+                        <option value="audience">Target Audience Insights</option>
+                        <option value="risks">Risk Assessment</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="analyzeContent()">Analyze with Grok</button>
+            </div>
+
+            <!-- Creative Writing Tab -->
+            <div id="grok-creative-tab" class="grok-tab" style="display:none;">
+                <p style="color:#a1a1aa; margin-bottom:20px;">Generate creative content - social posts, emails, ad copy, scripts.</p>
+                
+                <div class="form-group">
+                    <label>Content Type</label>
+                    <select id="creative-type">
+                        <option value="social">Social Media Post</option>
+                        <option value="email">Email Campaign</option>
+                        <option value="ad">Advertisement Copy</option>
+                        <option value="blog">Blog Post</option>
+                        <option value="script">Event Script</option>
+                        <option value="press">Press Release</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Topic/Brief</label>
+                    <textarea id="creative-brief" placeholder="Describe what you want created..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tone</label>
+                    <select id="creative-tone">
+                        <option value="professional">Professional</option>
+                        <option value="luxury">Luxury/Premium</option>
+                        <option value="casual">Casual/Friendly</option>
+                        <option value="exciting">Exciting/Bold</option>
+                        <option value="exclusive">Exclusive/Elite</option>
+                        <option value="technical">Technical/Detailed</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="createContent()">Generate Content</button>
+                
+                <div style="margin-top:20px; padding:15px; background:rgba(59,130,246,0.1); border-radius:8px; border:1px solid rgba(59,130,246,0.3);">
+                    <strong style="color:#d4d4d8;">✨ Quick Templates:</strong>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                        <button class="btn" style="padding:10px; font-size:13px;" onclick="loadTemplate('instagram')">📸 Instagram</button>
+                        <button class="btn" style="padding:10px; font-size:13px;" onclick="loadTemplate('linkedin')">💼 LinkedIn</button>
+                        <button class="btn" style="padding:10px; font-size:13px;" onclick="loadTemplate('twitter')">🐦 Twitter</button>
+                        <button class="btn" style="padding:10px; font-size:13px;" onclick="loadTemplate('email')">📧 Email</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Generation Tab -->
+            <div id="grok-code-tab" class="grok-tab" style="display:none;">
+                <p style="color:#a1a1aa; margin-bottom:20px;">Generate, debug, or explain code in any language.</p>
+                
+                <div class="form-group">
+                    <label>Programming Language</label>
+                    <select id="code-language">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="sql">SQL</option>
+                        <option value="html">HTML/CSS</option>
+                        <option value="any">Any Language</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Task</label>
+                    <select id="code-task">
+                        <option value="generate">Generate New Code</option>
+                        <option value="debug">Debug/Fix Code</option>
+                        <option value="explain">Explain Code</option>
+                        <option value="optimize">Optimize Code</option>
+                        <option value="convert">Convert Between Languages</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description or Code</label>
+                    <textarea id="code-input" placeholder="Describe what you want or paste code..." style="min-height:150px; font-family:monospace;"></textarea>
+                </div>
+                
+                <button class="btn" onclick="processCode()">Process with Grok</button>
+            </div>
+
+            <!-- Loading and Results -->
             <div class="loading" id="grok-loading">
                 <div class="spinner"></div>
                 <p>Grok is thinking...</p>
             </div>
+            
             <div id="grok-result"></div>
         </div>
 
