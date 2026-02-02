@@ -1,6 +1,11 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { ResearchService } from './services/research.service.js';
 import { CanvaClient } from './clients/canva.client.js';
 import { KreaClient } from './clients/krea.client.js';
@@ -19,6 +24,9 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Initialize services
 const researchService = new ResearchService();
 const canvaClient = new CanvaClient();
@@ -30,21 +38,9 @@ const gammaClient = new GammaClient();
 // In-memory store for Canva OAuth PKCE code_verifier by state (for callback flow)
 const canvaStateStore = new Map<string, { codeVerifier: string; redirectUri?: string }>();
 
-// Root: simple welcome page with links
+// Root: redirect to dashboard
 app.get('/', (req: Request, res: Response) => {
-  res.type('html').send(`
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>AI Orchestrator</title></head>
-<body style="font-family:sans-serif;max-width:640px;margin:3rem auto;padding:1.5rem;">
-  <h1>AI Orchestrator</h1>
-  <p>Server is running. Useful links:</p>
-  <ul>
-    <li><a href="/health">Health check</a> – status and Canva config</li>
-    <li><a href="/auth/canva/authorize">Canva OAuth</a> – get access/refresh tokens (one-time)</li>
-  </ul>
-  <p>API docs: see <code>API_REFERENCE.md</code> in the project.</p>
-</body></html>
-  `);
+  res.redirect('/dashboard.html');
 });
 
 // Health check endpoint
@@ -458,6 +454,83 @@ app.get('/canva/autofill-job/:jobId', async (req: Request, res: Response) => {
   }
 });
 
+// --- Unified Proposal Generation ---
+app.post('/proposals/generate', async (req: Request, res: Response) => {
+  try {
+    const { clientName, eventType, eventDetails = {}, numSlides = 8 } = req.body;
+    
+    if (!clientName || !eventType) {
+      res.status(400).json({ 
+        error: 'Invalid request', 
+        message: 'clientName and eventType are required' 
+      });
+      return;
+    }
+
+    console.log(`🎯 Generating proposal for ${clientName} - ${eventType}`);
+    
+    // Step 1: Research
+    console.log('📚 Step 1: Conducting research...');
+    const researchTopic = `${eventType} for ${clientName}. ${JSON.stringify(eventDetails)}`;
+    const researchResult = await researchService.conductResearch({ 
+      topic: researchTopic,
+      depth: 'basic' 
+    });
+    
+    // Step 2: Create presentation with Gamma
+    console.log('🎨 Step 2: Generating presentation...');
+    const proposalContent = `${eventType} Proposal for ${clientName}
+
+${researchResult.combinedInsights}
+
+Event Details:
+${JSON.stringify(eventDetails, null, 2)}`;
+
+    const gammaResult = await gammaClient.createGeneration({
+      inputText: proposalContent,
+      format: 'presentation',
+      numCards: numSlides,
+      exportAs: 'pdf',
+      textMode: 'condense',
+      textOptions: {
+        amount: 'detailed',
+        tone: 'professional, persuasive',
+        audience: 'corporate clients, decision makers'
+      },
+      imageOptions: {
+        source: 'aiGenerated',
+        style: 'professional, modern, luxury'
+      }
+    });
+    
+    console.log('✅ Proposal generation complete!');
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        clientName,
+        eventType,
+        research: {
+          topic: researchResult.topic,
+          insights: researchResult.combinedInsights,
+          sources: researchResult.sources,
+          cached: researchResult.cached
+        },
+        presentation: {
+          generationId: gammaResult.generationId,
+          message: 'Poll GET /gamma/status/:generationId for completion and gammaUrl'
+        }
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Proposal generation error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({ 
@@ -477,4 +550,5 @@ app.listen(PORT, () => {
   console.log(`📷 Freepik stock: GET http://localhost:${PORT}/stock/search?term=..., GET /stock/resource/:id`);
   console.log(`📑 Gamma: POST http://localhost:${PORT}/gamma/create, GET /gamma/status/:generationId`);
   console.log(`🎨 Canva: GET http://127.0.0.1:${PORT}/auth/canva/authorize (one-time OAuth), POST /canva/create-proposal, GET /canva/autofill-job/:jobId`);
+  console.log(`📄 Proposals: POST http://localhost:${PORT}/proposals/generate (unified: research + Gamma)`);
 });
